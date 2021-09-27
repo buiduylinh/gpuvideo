@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Log;
 
+import com.daasuu.gpuv.egl.filter.BeautyFilter;
 import com.daasuu.gpuv.egl.filter.GlBilateralFilter;
 import com.daasuu.gpuv.egl.filter.GlBoxBlurFilter;
 import com.daasuu.gpuv.egl.filter.GlBrightnessFilter;
@@ -45,6 +46,7 @@ import com.daasuu.gpuv.egl.filter.GlWatermarkFilter;
 import com.daasuu.gpuv.egl.filter.GlWeakPixelInclusionFilter;
 import com.daasuu.gpuv.egl.filter.GlWhiteBalanceFilter;
 import com.daasuu.gpuv.egl.filter.GlZoomBlurFilter;
+import com.daasuu.gpuv.egl.filter.TransactionFilter;
 import com.daasuu.gpuvideoandroid.filter.GlBitmapOverlaySample;
 
 import java.io.IOException;
@@ -106,7 +108,7 @@ public enum FilterType {
             case DEFAULT:
                 return new GlFilter();
             case BILATERAL_BLUR:
-                return new GlBilateralFilter();
+                return new TransactionFilter();
             case BOX_BLUR:
                 return new GlBoxBlurFilter();
             case BRIGHTNESS:
