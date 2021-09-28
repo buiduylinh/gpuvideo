@@ -11,16 +11,16 @@ import java.util.Queue;
 
 import static android.opengl.GLES20.GL_FLOAT;
 
-public class TransactionFilter extends GlFilter {
+public class TransitionFilterWrapper extends GlFilter {
 
 
     private GlFilter currentFilter = new GlFilter();
 
-    private GlFilter glFilter = new GlFilter();
+    private GlFilter glFilter = new GlFilter(); //filter empty
 
     private final Queue<Runnable> runOnDraw;
 
-    public TransactionFilter() {
+    public TransitionFilterWrapper() {
         runOnDraw = new LinkedList<>();
     }
 
@@ -39,6 +39,18 @@ public class TransactionFilter extends GlFilter {
 
     private long timeStick = 0l;
 
+    public void changeFilter(GlFilter glFilter) {
+        currentFilter = glFilter;
+        setVertexShaderSource(TransitionFilterWrapper.this.currentFilter.getVertexShaderSource());
+        setFragmentShaderSource(TransitionFilterWrapper.this.currentFilter.getFragmentShaderSource());
+        runOnDraw(new Runnable() {
+            @Override
+            public void run() {
+                currentFilter.setup();
+            }
+        });
+    }
+
     @Override
     public void setup() {
 
@@ -49,51 +61,23 @@ public class TransactionFilter extends GlFilter {
                 timeStick++;
                 handler.postDelayed(this, 1000);
                 if (timeStick == 5) {
-                    currentFilter = new GlBulgeDistortionFilter();
-                    setVertexShaderSource(TransactionFilter.this.currentFilter.getVertexShaderSource());
-                    setFragmentShaderSource(TransactionFilter.this.currentFilter.getFragmentShaderSource());
-                    runOnDraw(new Runnable() {
-                        @Override
-                        public void run() {
-                            currentFilter.setup();
-                        }
-                    });
+                    currentFilter = new TransitionFilter();
+                    changeFilter(currentFilter);
                 }
 
                 if (timeStick == 7) {
                     currentFilter = new GlFilter();
-                    setVertexShaderSource(TransactionFilter.this.currentFilter.getVertexShaderSource());
-                    setFragmentShaderSource(TransactionFilter.this.currentFilter.getFragmentShaderSource());
-                    runOnDraw(new Runnable() {
-                        @Override
-                        public void run() {
-                            currentFilter.setup();
-                        }
-                    });
+                    changeFilter(currentFilter);
                 }
 
                 if (timeStick == 14) {
                     currentFilter = new GlSwirlFilter();
-                    setVertexShaderSource(TransactionFilter.this.currentFilter.getVertexShaderSource());
-                    setFragmentShaderSource(TransactionFilter.this.currentFilter.getFragmentShaderSource());
-                    runOnDraw(new Runnable() {
-                        @Override
-                        public void run() {
-                            currentFilter.setup();
-                        }
-                    });
+                    changeFilter(currentFilter);
                 }
 
                 if (timeStick == 16) {
                     currentFilter = new GlFilter();
-                    setVertexShaderSource(TransactionFilter.this.currentFilter.getVertexShaderSource());
-                    setFragmentShaderSource(TransactionFilter.this.currentFilter.getFragmentShaderSource());
-                    runOnDraw(new Runnable() {
-                        @Override
-                        public void run() {
-                            currentFilter.setup();
-                        }
-                    });
+                    changeFilter(currentFilter);
                 }
             }
         });
