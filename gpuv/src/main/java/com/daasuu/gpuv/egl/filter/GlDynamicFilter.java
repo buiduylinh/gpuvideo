@@ -3,490 +3,496 @@ package com.daasuu.gpuv.egl.filter;
 import android.opengl.GLES20;
 
 import java.nio.FloatBuffer;
+import java.util.LinkedList;
+import java.util.Queue;
 
 public class GlDynamicFilter extends GlFilter {
 
+    public static final int EMPTY_FILTER = 99;
+
+    private final Queue<Runnable> runOnDraw;
+
     public static final String TRANSITION_FRAGMENT_SHADER = "precision mediump float;\n" +
-                    "varying vec2 vTextureCoord;\n" +
-                    "//varying mat4 sMatrix;\n" +
-                    "uniform lowp sampler2D sTexture;\n" +
-                    "uniform int type;\n" +
-                    "uniform float wave[120];\n" +
-                    "uniform float scalex;\n" +
-                    "uniform float scaley;\n" +
-                    "uniform float offset;\n" +
-                    "uniform float offset2;\n" +
-                    "uniform float random1;\n" +
-                    "uniform int filterType;\n" +
-                    "\n" +
-                    "\n" +
-                    "\n" +
-                    "highp float rand(in vec2 co, in float seed){\n" +
-                    "    highp float a = 12.9898;\n" +
-                    "    highp float b = 78.233;\n" +
-                    "    highp float c = 43758.5453;\n" +
-                    "    highp float dt= dot(co.xy ,vec2(a,b));\n" +
-                    "    highp float sn= mod(dt,3.14);\n" +
-                    "    return fract(sin(sn) * c * seed);\n" +
-                    "}\n" +
-                    "\n" +
-                    "void main() {\n" +
-                    "\n" +
-                    "    vec2 coordUsed = vTextureCoord;\n" +
-                    "    int finalType = type;\n" +
-                    "    if(scalex<1.0){\n" +
-                    "        coordUsed.x = coordUsed.x+((coordUsed.x-0.5)/scalex * (1.0-scalex));\n" +
-                    "        if(coordUsed.x<0.0 || coordUsed.x>1.0){\n" +
-                    "            finalType=99;\n" +
-                    "        }\n" +
-                    "    }\n" +
-                    "    if(scaley<1.0){\n" +
-                    "        coordUsed.y = coordUsed.y+((coordUsed.y-0.5)/scaley * (1.0-scaley));\n" +
-                    "        if(coordUsed.y<0.0 || coordUsed.y>1.0){\n" +
-                    "            finalType=99;\n" +
-                    "        }\n" +
-                    "    }\n" +
-                    "\n" +
-                    "\n" +
-                    "    highp vec4 textureColor = texture2D(sTexture, coordUsed);\n" +
-                    "    float r = textureColor.r;\n" +
-                    "    float g = textureColor.g;\n" +
-                    "    float b = textureColor.b;\n" +
-                    "\n" +
-                    "    float r_shift = 0.0;\n" +
-                    "    float g_shift = 0.0;\n" +
-                    "    float b_shift = 0.0;\n" +
-                    "\n" +
-                    "\n" +
-                    "    if(finalType==99){\n" +
-                    "        r = 0.0;\n" +
-                    "        g = 0.0;\n" +
-                    "        b = 0.0;\n" +
-                    "    }\n" +
-                    "    else if(finalType==100){\n" +
-                    "        r = 0.0;\n" +
-                    "        g = 0.0;\n" +
-                    "        b = 0.0;\n" +
-                    "    }\n" +
-                    "    else if(finalType==1){\n" +
-                    "        for(int i=0;i<120;i+=6){\n" +
-                    "            if(coordUsed.x>wave[i]-offset && coordUsed.x<wave[i+1]+offset && coordUsed.y>wave[i+2] && coordUsed.y<wave[i+3]){\n" +
-                    "                if(wave[i+5]<0.3){\n" +
-                    "                    r_shift+=wave[i+4];\n" +
-                    "                    g_shift-=wave[i+4];\n" +
-                    "                    b_shift-=wave[i+4];\n" +
-                    "                }\n" +
-                    "                else if(wave[i+5]<0.6){\n" +
-                    "                    r_shift-=wave[i+4];\n" +
-                    "                    g_shift+=wave[i+4];\n" +
-                    "                    b_shift-=wave[i+4];\n" +
-                    "                }\n" +
-                    "                else{\n" +
-                    "                    r_shift-=wave[i+4];\n" +
-                    "                    g_shift-=wave[i+4];\n" +
-                    "                    b_shift+=wave[i+4];\n" +
-                    "                }\n" +
-                    "                break;\n" +
-                    "            }\n" +
-                    "        }\n" +
-                    "        highp vec2 wavecord_r = coordUsed+vec2(r_shift,0.00);\n" +
-                    "        highp vec2 wavecord_g = coordUsed+vec2(g_shift,0.00);\n" +
-                    "        highp vec2 wavecord_b = coordUsed+vec2(b_shift,0.00);\n" +
-                    "        highp vec4 tc_r = texture2D(sTexture, wavecord_r);\n" +
-                    "        highp vec4 tc_g = texture2D(sTexture, wavecord_g);\n" +
-                    "        highp vec4 tc_b = texture2D(sTexture, wavecord_b);\n" +
-                    "        r = tc_r.r;\n" +
-                    "        g = tc_g.g;\n" +
-                    "        b = tc_b.b;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    else if(finalType==3){\n" +
-                    "        r_shift = (wave[4])/2.0;\n" +
-                    "        for(int i=0;i<120;i+=6){\n" +
-                    "            if(coordUsed.y>wave[i+2] && coordUsed.y<wave[i+3]){\n" +
-                    "                if(wave[i+5]<0.3){\n" +
-                    "                    r_shift=wave[i+4];\n" +
-                    "                    g_shift=wave[i+4];\n" +
-                    "                    b_shift=wave[i+4];\n" +
-                    "                    break;\n" +
-                    "                }\n" +
-                    "            }\n" +
-                    "        }\n" +
-                    "        highp vec2 wavecord_r = coordUsed+vec2(r_shift,0.00);\n" +
-                    "        highp vec2 wavecord_g = coordUsed+vec2(g_shift,0.00);\n" +
-                    "        highp vec2 wavecord_b = coordUsed+vec2(b_shift,0.00);\n" +
-                    "        highp vec4 tc_r = texture2D(sTexture, wavecord_r);\n" +
-                    "        highp vec4 tc_g = texture2D(sTexture, wavecord_g);\n" +
-                    "        highp vec4 tc_b = texture2D(sTexture, wavecord_b);\n" +
-                    "        r = tc_r.r;\n" +
-                    "        g = tc_g.g;\n" +
-                    "        b = tc_b.b;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    else if(finalType==4){\n" +
-                    "        g_shift = (offset2/50.0);\n" +
-                    "        for(int i=0;i<120;i+=6){\n" +
-                    "            if(coordUsed.y>wave[i+2]+offset && coordUsed.y<wave[i+3]+offset){\n" +
-                    "                if(wave[i+5]<0.3){\n" +
-                    "                    r_shift=wave[i+4];\n" +
-                    "                    g_shift=wave[i+4];\n" +
-                    "                    b_shift=wave[i+4];\n" +
-                    "                    break;\n" +
-                    "                }\n" +
-                    "            }\n" +
-                    "        }\n" +
-                    "        highp vec2 wavecord_r = coordUsed+vec2(r_shift,0.00);\n" +
-                    "        highp vec2 wavecord_g = coordUsed+vec2(g_shift,0.00);\n" +
-                    "        highp vec2 wavecord_b = coordUsed+vec2(b_shift,0.00);\n" +
-                    "        highp vec4 tc_r = texture2D(sTexture, wavecord_r);\n" +
-                    "        highp vec4 tc_g = texture2D(sTexture, wavecord_g);\n" +
-                    "        highp vec4 tc_b = texture2D(sTexture, wavecord_b);\n" +
-                    "        r = tc_r.r;\n" +
-                    "        g = tc_g.g;\n" +
-                    "        b = tc_b.b;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    else if(finalType==5){\n" +
-                    "        highp vec2 wavecord_r = coordUsed+vec2(r_shift,0.00);\n" +
-                    "        highp vec2 wavecord_g = coordUsed+vec2(g_shift,0.00);\n" +
-                    "        highp vec2 wavecord_b = coordUsed+vec2(b_shift,0.00);\n" +
-                    "        highp vec4 tc_r = texture2D(sTexture, wavecord_r);\n" +
-                    "        highp vec4 tc_g = texture2D(sTexture, wavecord_g);\n" +
-                    "        highp vec4 tc_b = texture2D(sTexture, wavecord_b);\n" +
-                    "        r = tc_r.r;\n" +
-                    "        g = tc_g.g;\n" +
-                    "        b = tc_b.b;\n" +
-                    "        float a = mod(offset,0.02);\n" +
-                    "        if(mod(coordUsed.y+offset,0.02)<0.01){\n" +
-                    "            r-=0.1;\n" +
-                    "            g-=0.1;\n" +
-                    "            b-=0.1;\n" +
-                    "        }\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    else if(finalType==7){\n" +
-                    "\n" +
-                    "        float sx2 = offset;\n" +
-                    "        float sy2 = offset;\n" +
-                    "\n" +
-                    "        vec2 coordUsedZoom = vec2(0.0,0.0);\n" +
-                    "        coordUsedZoom.x = coordUsed.x+((coordUsed.x-0.5)/sx2 * (1.0-sx2));\n" +
-                    "        coordUsedZoom.y = coordUsed.y+((coordUsed.y-0.5)/sy2 * (1.0-sy2));\n" +
-                    "\n" +
-                    "        highp vec4 tca = texture2D(sTexture, coordUsedZoom);\n" +
-                    "\n" +
-                    "        r = tca.r + (r*(1.0-offset2));\n" +
-                    "        g = tca.g + (g*(1.0-offset2));\n" +
-                    "        b = tca.b + (b*(1.0-offset2));\n" +
-                    "\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    else if(finalType==8){\n" +
-                    "\n" +
-                    "        float sx = offset;\n" +
-                    "        float sy = offset;\n" +
-                    "        float sx2 = offset2;\n" +
-                    "        float sy2 = offset2;\n" +
-                    "\n" +
-                    "        vec2 coordUsedR = vec2(0.0,0.0);\n" +
-                    "        vec2 coordUsedA = vec2(0.0,0.0);\n" +
-                    "\n" +
-                    "        coordUsedA.x = coordUsed.x+((coordUsed.x-0.5)/sx * (1.0-sx));\n" +
-                    "        coordUsedA.y = coordUsed.y+((coordUsed.y-0.5)/sy * (1.0-sy));\n" +
-                    "        coordUsedR.x = coordUsed.x+((coordUsed.x-0.5)/sx2 * (1.0-sx2));\n" +
-                    "        coordUsedR.y = coordUsed.y+((coordUsed.y-0.5)/sy2 * (1.0-sy2));\n" +
-                    "\n" +
-                    "        highp vec2 wavecord_r = coordUsedR+vec2(r_shift,0.00);\n" +
-                    "        highp vec2 wavecord_g = coordUsedA+vec2(g_shift,0.00);\n" +
-                    "        highp vec2 wavecord_b = coordUsedA+vec2(b_shift,0.00);\n" +
-                    "        highp vec4 tc_r = texture2D(sTexture, wavecord_r);\n" +
-                    "        highp vec4 tc_g = texture2D(sTexture, wavecord_g);\n" +
-                    "        highp vec4 tc_b = texture2D(sTexture, wavecord_b);\n" +
-                    "\n" +
-                    "        r = tc_r.r;\n" +
-                    "        g = tc_g.g;\n" +
-                    "        b = tc_b.b;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    //curve_1\n" +
-                    "    else if(finalType==10){\n" +
-                    "        for(int i=0;i<120;i+=6){\n" +
-                    "            if(coordUsed.y>wave[i+2]+offset && coordUsed.y<wave[i+3]+offset){\n" +
-                    "                highp float startY = wave[i+2]+offset;\n" +
-                    "                highp float endY = wave[i+3]+offset;\n" +
-                    "                highp float shiftRadius = wave[i+3];\n" +
-                    "                highp float shiftFactor = wave[i+4];\n" +
-                    "                highp float x = coordUsed.x;\n" +
-                    "                highp float y = coordUsed.y;\n" +
-                    "                highp float max = endY-startY;\n" +
-                    "                highp float perc = ((y-startY)/max);\n" +
-                    "                highp float ang = perc*3.14*2.0;\n" +
-                    "                highp float sinVal = sin(ang);\n" +
-                    "                highp float shiftX = sinVal*shiftFactor*2.0;\n" +
-                    "\n" +
-                    "                highp vec2 shiftXcoord1 = vec2(shiftX,0.00);\n" +
-                    "                highp vec2 shiftXcoord2 = vec2(shiftX*0.75,0.00);\n" +
-                    "                highp vec2 shiftXcoord3 = vec2(shiftX*0.5,0.00);\n" +
-                    "\n" +
-                    "                highp vec2 shiftPos1 = coordUsed - shiftXcoord1;\n" +
-                    "                highp vec2 shiftPos2 = coordUsed - shiftXcoord2;\n" +
-                    "                highp vec2 shiftPos3 = coordUsed - shiftXcoord3;\n" +
-                    "\n" +
-                    "                highp vec4 tc1 = texture2D(sTexture, shiftPos1);\n" +
-                    "                highp vec4 tc2 = texture2D(sTexture, shiftPos2);\n" +
-                    "                highp vec4 tc3 = texture2D(sTexture, shiftPos3);\n" +
-                    "                r = tc2.r;\n" +
-                    "                g = tc1.g;\n" +
-                    "                b = tc1.b;\n" +
-                    "            }\n" +
-                    "        }\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    //curve_2\n" +
-                    "    else if(finalType==11){\n" +
-                    "        for(int i=0;i<120;i+=6){\n" +
-                    "            if(coordUsed.y>wave[i+2] && coordUsed.y<wave[i+3]){\n" +
-                    "                highp float startY = wave[i+2]+offset;\n" +
-                    "                highp float endY = wave[i+3]+offset;\n" +
-                    "                highp float shiftRadius = wave[i+3];\n" +
-                    "                highp float shiftFactor = wave[i+4];\n" +
-                    "                highp float x = coordUsed.x;\n" +
-                    "                highp float y = coordUsed.y;\n" +
-                    "                highp float max = endY-startY;\n" +
-                    "                highp float perc = ((y-startY)/max);\n" +
-                    "                highp float ang = perc*3.14*2.0;\n" +
-                    "                highp float sinVal = sin(ang);\n" +
-                    "                highp float shiftX = sinVal*shiftFactor*2.0;\n" +
-                    "\n" +
-                    "                highp vec2 shiftXcoord1 = vec2(shiftX,0.00);\n" +
-                    "                highp vec2 shiftXcoord2 = vec2(shiftX*0.75,0.00);\n" +
-                    "                highp vec2 shiftXcoord3 = vec2(shiftX*0.5,0.00);\n" +
-                    "\n" +
-                    "                highp vec2 shiftPos1 = coordUsed - shiftXcoord1;\n" +
-                    "                highp vec2 shiftPos2 = coordUsed - shiftXcoord2;\n" +
-                    "                highp vec2 shiftPos3 = coordUsed - shiftXcoord3;\n" +
-                    "\n" +
-                    "                highp vec4 tc1 = texture2D(sTexture, shiftPos1);\n" +
-                    "                highp vec4 tc2 = texture2D(sTexture, shiftPos2);\n" +
-                    "                highp vec4 tc3 = texture2D(sTexture, shiftPos3);\n" +
-                    "                r = tc2.r;\n" +
-                    "                g = tc1.g;\n" +
-                    "                b = tc1.b;\n" +
-                    "            }\n" +
-                    "        }\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    //white_1\n" +
-                    "    else if(finalType==12){\n" +
-                    "        highp float x = coordUsed.x;\n" +
-                    "        highp float y_1 = coordUsed.y-offset;\n" +
-                    "        if(y_1<0.0){\n" +
-                    "            y_1 = 1.0+y_1;\n" +
-                    "        }\n" +
-                    "\n" +
-                    "        highp float randval = 0.1;\n" +
-                    "\n" +
-                    "        highp float factor2 = offset2+(randval/5.0)+y_1/5.0;\n" +
-                    "        if(mod((1.0-y_1),factor2)<factor2/2.0 && (mod(y_1,0.005)<0.002)){\n" +
-                    "            r+=0.7;\n" +
-                    "            g+=0.7;\n" +
-                    "            b+=0.7;\n" +
-                    "        }\n" +
-                    "\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    //white_2\n" +
-                    "    else if(finalType==13){\n" +
-                    "        highp float x = coordUsed.x;\n" +
-                    "        highp float y_1 = coordUsed.y-offset;\n" +
-                    "        if(y_1<0.0){\n" +
-                    "            y_1 = 1.0+y_1;\n" +
-                    "        }\n" +
-                    "\n" +
-                    "        highp float randval = rand(coordUsed.xy,random1);\n" +
-                    "        highp float factor2 = offset2+(randval/5.0)+y_1/5.0;\n" +
-                    "        if(mod((1.0-y_1),factor2)<factor2/2.0 && (mod(y_1,0.005)<0.002)){\n" +
-                    "            r+=0.7;\n" +
-                    "            g+=0.7;\n" +
-                    "            b+=0.7;\n" +
-                    "        }\n" +
-                    "\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    //shake_1\n" +
-                    "    else if(finalType==14){\n" +
-                    "        highp float L = distance(coordUsed,vec2(0.5,0.5));\n" +
-                    "        highp float beta = atan((coordUsed.y-0.5),(coordUsed.x-0.5));\n" +
-                    "        highp float teta = beta + random1;\n" +
-                    "        highp float y_d = 0.5+L*sin(teta);\n" +
-                    "        highp float x_d = 0.5+L*cos(teta);\n" +
-                    "        highp vec2 shiftPos3 = vec2(x_d,y_d);\n" +
-                    "        highp vec4 tc3 = texture2D(sTexture, shiftPos3);\n" +
-                    "        r = tc3.r;\n" +
-                    "        g = tc3.g;\n" +
-                    "        b = tc3.b;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    //shake_2\n" +
-                    "    else if(finalType==15){\n" +
-                    "        highp float L = distance(coordUsed,vec2(0.5,0.5));\n" +
-                    "        highp float beta = atan((coordUsed.y-0.5),(coordUsed.x-0.5));\n" +
-                    "\n" +
-                    "        highp float teta = beta + random1;\n" +
-                    "        highp float y_d = 0.5+L*sin(teta);\n" +
-                    "        highp float x_d = 0.5+L*cos(teta);\n" +
-                    "        highp vec2 shiftPos3 = vec2(x_d,y_d);\n" +
-                    "        highp vec4 tc3 = texture2D(sTexture, shiftPos3);\n" +
-                    "\n" +
-                    "        highp float teta2 = beta + random1/2.0;\n" +
-                    "        highp float y_d2 = 0.5+L*sin(teta2);\n" +
-                    "        highp float x_d2 = 0.5+L*cos(teta2);\n" +
-                    "        highp vec2 shiftPos2 = vec2(x_d2,y_d2);\n" +
-                    "        highp vec4 tc2 = texture2D(sTexture, shiftPos2);\n" +
-                    "\n" +
-                    "        r = tc3.r;\n" +
-                    "        g = tc2.g;\n" +
-                    "        b = tc2.b;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    //old_cinema_1\n" +
-                    "    else if(finalType==16){\n" +
-                    "        highp float y_1 = coordUsed.y-offset;\n" +
-                    "        if(y_1<0.0){\n" +
-                    "            y_1 = 1.0+y_1;\n" +
-                    "        }\n" +
-                    "        highp vec4 tc2 = texture2D(sTexture, vec2(coordUsed.x,y_1));\n" +
-                    "        r = tc2.r;\n" +
-                    "        g = tc2.g;\n" +
-                    "        b = tc2.b;\n" +
-                    "\n" +
-                    "        y_1 = coordUsed.y+offset;\n" +
-                    "        if(y_1<0.0){\n" +
-                    "            y_1 = 1.0+y_1;\n" +
-                    "        }\n" +
-                    "\n" +
-                    "        highp float randval = rand(coordUsed.xy,random1);\n" +
-                    "        highp float factor2 = offset2+(randval/5.0)+y_1/5.0;\n" +
-                    "        if(mod((1.0-y_1),factor2)<factor2/2.0 && (mod(y_1,0.005)<0.002)){\n" +
-                    "            r+=0.7;\n" +
-                    "            g+=0.7;\n" +
-                    "            b+=0.7;\n" +
-                    "        }\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    //old_cinema_2\n" +
-                    "    else if(finalType==17){\n" +
-                    "        highp float y_1 = coordUsed.y-offset;\n" +
-                    "        if(y_1<0.0){\n" +
-                    "            y_1 = 1.0+y_1;\n" +
-                    "        }\n" +
-                    "        highp vec4 tc1 = texture2D(sTexture, vec2(coordUsed.x,y_1));\n" +
-                    "        highp vec4 tc2 = texture2D(sTexture, vec2(coordUsed.x+random1,y_1));\n" +
-                    "        r = tc1.r;\n" +
-                    "        g = tc2.g;\n" +
-                    "        b = tc1.b;\n" +
-                    "\n" +
-                    "        y_1 = coordUsed.y+offset;\n" +
-                    "        if(y_1<0.0){\n" +
-                    "            y_1 = 1.0+y_1;\n" +
-                    "        }\n" +
-                    "\n" +
-                    "        highp float randval = rand(coordUsed.xy,random1);\n" +
-                    "        highp float factor2 = offset2+(randval/5.0)+y_1/5.0;\n" +
-                    "        if(mod((1.0-y_1),factor2)<factor2/2.0 && (mod(y_1,0.005)<0.002)){\n" +
-                    "            r+=0.7;\n" +
-                    "            g+=0.7;\n" +
-                    "            b+=0.7;\n" +
-                    "        }\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    //leak_1\n" +
-                    "    else if(finalType==18){\n" +
-                    "        highp float L = distance(coordUsed,vec2(0.0,offset));\n" +
-                    "        r+=0.5*L;\n" +
-                    "        g+=0.25*L;\n" +
-                    "\n" +
-                    "        L*=L;\n" +
-                    "        r+=0.5*L;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    //leak_2\n" +
-                    "    else if(finalType==19){\n" +
-                    "        highp float L = distance(coordUsed,vec2(0.0,offset));\n" +
-                    "        L=1.0-L;\n" +
-                    "        r+=0.5*L;\n" +
-                    "        g+=0.25*L;\n" +
-                    "\n" +
-                    "        L*=L;\n" +
-                    "        r+=0.5*L;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "\n" +
-                    "\n" +
-                    "    if(filterType==1){\n" +
-                    "        //curve merah, gelap kurang merah, terang lebih merah\n" +
-                    "        r = 0.5 * sin ( r*3.14 - 1.57 ) + 0.5;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    if(filterType==2){\n" +
-                    "        r = 0.25 * tan ( r*3.14 -1.57 )/1.4 + 0.5;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    if(filterType==3){\n" +
-                    "        g = 0.5 * sin ( g*3.14 - 1.57 ) + 0.5;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    if(filterType==4){\n" +
-                    "        g = 0.25 * tan ( g*3.14 -1.57 )/1.4 + 0.5;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    if(filterType==5){\n" +
-                    "        b = 0.5 * sin ( b*3.14 - 1.57 ) + 0.5;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    if(filterType==6){\n" +
-                    "        b = 0.25 * tan ( b*3.14 -1.57 )/1.4 + 0.5;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    if(filterType==7){\n" +
-                    "        r = 0.5 * sin ( r*3.14 - 1.57 ) + 0.5;\n" +
-                    "        b = 0.25 * tan ( b*3.14 -1.57 )/1.4 + 0.5;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    if(filterType==8){\n" +
-                    "        r = 0.5 * sin ( r*3.14 - 1.57 ) + 0.5;\n" +
-                    "        g = 0.25 * tan ( g*3.14 -1.57 )/1.4 + 0.5;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    if(filterType==9){\n" +
-                    "        g = 0.5 * sin ( g*3.14 - 1.57 ) + 0.5;\n" +
-                    "        r = 0.25 * tan ( r*3.14 -1.57 )/1.4 + 0.5;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    if(filterType==10){\n" +
-                    "        g = 0.5 * sin ( g*3.14 - 1.57 ) + 0.5;\n" +
-                    "        b = 0.25 * tan ( b*3.14 -1.57 )/1.4 + 0.5;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    if(filterType==11){\n" +
-                    "        b = 0.5 * sin ( b*3.14 - 1.57 ) + 0.5;\n" +
-                    "        r = 0.25 * tan ( r*3.14 -1.57 )/1.4 + 0.5;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    if(filterType==12){\n" +
-                    "        b = 0.5 * sin ( b*3.14 - 1.57 ) + 0.5;\n" +
-                    "        g = 0.25 * tan ( g*3.14 -1.57 )/1.4 + 0.5;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "\n" +
-                    "\n" +
-                    "\n" +
-                    "\n" +
-                    "\n" +
-                    "\n" +
-                    "//    r+=(scalex+scaley)*0.0;\n" +
-                    "    gl_FragColor = vec4(r,g,b,1.0);\n" +
-                    "}";
+            "varying vec2 vTextureCoord;\n" +
+            "//varying mat4 sMatrix;\n" +
+            "uniform lowp sampler2D sTexture;\n" +
+            "uniform int type;\n" +
+            "uniform float wave[120];\n" +
+            "uniform float scalex;\n" +
+            "uniform float scaley;\n" +
+            "uniform float offset;\n" +
+            "uniform float offset2;\n" +
+            "uniform float random1;\n" +
+            "uniform int filterType;\n" +
+            "\n" +
+            "\n" +
+            "\n" +
+            "highp float rand(in vec2 co, in float seed){\n" +
+            "    highp float a = 12.9898;\n" +
+            "    highp float b = 78.233;\n" +
+            "    highp float c = 43758.5453;\n" +
+            "    highp float dt= dot(co.xy ,vec2(a,b));\n" +
+            "    highp float sn= mod(dt,3.14);\n" +
+            "    return fract(sin(sn) * c * seed);\n" +
+            "}\n" +
+            "\n" +
+            "void main() {\n" +
+            "\n" +
+            "    vec2 coordUsed = vTextureCoord;\n" +
+            "    int finalType = type;\n" +
+            "    if(scalex<1.0){\n" +
+            "        coordUsed.x = coordUsed.x+((coordUsed.x-0.5)/scalex * (1.0-scalex));\n" +
+            "        if(coordUsed.x<0.0 || coordUsed.x>1.0){\n" +
+            "            finalType=99;\n" +
+            "        }\n" +
+            "    }\n" +
+            "    if(scaley<1.0){\n" +
+            "        coordUsed.y = coordUsed.y+((coordUsed.y-0.5)/scaley * (1.0-scaley));\n" +
+            "        if(coordUsed.y<0.0 || coordUsed.y>1.0){\n" +
+            "            finalType=99;\n" +
+            "        }\n" +
+            "    }\n" +
+            "\n" +
+            "\n" +
+            "    highp vec4 textureColor = texture2D(sTexture, coordUsed);\n" +
+            "    float r = textureColor.r;\n" +
+            "    float g = textureColor.g;\n" +
+            "    float b = textureColor.b;\n" +
+            "\n" +
+            "    float r_shift = 0.0;\n" +
+            "    float g_shift = 0.0;\n" +
+            "    float b_shift = 0.0;\n" +
+            "\n" +
+            "\n" +
+            "    if(finalType==99){\n" +
+            "        r = 0.0;\n" +
+            "        g = 0.0;\n" +
+            "        b = 0.0;\n" +
+            "    }\n" +
+            "    else if(finalType==100){\n" +
+            "        r = 0.0;\n" +
+            "        g = 0.0;\n" +
+            "        b = 0.0;\n" +
+            "    }\n" +
+            "    else if(finalType==1){\n" +
+            "        for(int i=0;i<120;i+=6){\n" +
+            "            if(coordUsed.x>wave[i]-offset && coordUsed.x<wave[i+1]+offset && coordUsed.y>wave[i+2] && coordUsed.y<wave[i+3]){\n" +
+            "                if(wave[i+5]<0.3){\n" +
+            "                    r_shift+=wave[i+4];\n" +
+            "                    g_shift-=wave[i+4];\n" +
+            "                    b_shift-=wave[i+4];\n" +
+            "                }\n" +
+            "                else if(wave[i+5]<0.6){\n" +
+            "                    r_shift-=wave[i+4];\n" +
+            "                    g_shift+=wave[i+4];\n" +
+            "                    b_shift-=wave[i+4];\n" +
+            "                }\n" +
+            "                else{\n" +
+            "                    r_shift-=wave[i+4];\n" +
+            "                    g_shift-=wave[i+4];\n" +
+            "                    b_shift+=wave[i+4];\n" +
+            "                }\n" +
+            "                break;\n" +
+            "            }\n" +
+            "        }\n" +
+            "        highp vec2 wavecord_r = coordUsed+vec2(r_shift,0.00);\n" +
+            "        highp vec2 wavecord_g = coordUsed+vec2(g_shift,0.00);\n" +
+            "        highp vec2 wavecord_b = coordUsed+vec2(b_shift,0.00);\n" +
+            "        highp vec4 tc_r = texture2D(sTexture, wavecord_r);\n" +
+            "        highp vec4 tc_g = texture2D(sTexture, wavecord_g);\n" +
+            "        highp vec4 tc_b = texture2D(sTexture, wavecord_b);\n" +
+            "        r = tc_r.r;\n" +
+            "        g = tc_g.g;\n" +
+            "        b = tc_b.b;\n" +
+            "    }\n" +
+            "\n" +
+            "    else if(finalType==3){\n" +
+            "        r_shift = (wave[4])/2.0;\n" +
+            "        for(int i=0;i<120;i+=6){\n" +
+            "            if(coordUsed.y>wave[i+2] && coordUsed.y<wave[i+3]){\n" +
+            "                if(wave[i+5]<0.3){\n" +
+            "                    r_shift=wave[i+4];\n" +
+            "                    g_shift=wave[i+4];\n" +
+            "                    b_shift=wave[i+4];\n" +
+            "                    break;\n" +
+            "                }\n" +
+            "            }\n" +
+            "        }\n" +
+            "        highp vec2 wavecord_r = coordUsed+vec2(r_shift,0.00);\n" +
+            "        highp vec2 wavecord_g = coordUsed+vec2(g_shift,0.00);\n" +
+            "        highp vec2 wavecord_b = coordUsed+vec2(b_shift,0.00);\n" +
+            "        highp vec4 tc_r = texture2D(sTexture, wavecord_r);\n" +
+            "        highp vec4 tc_g = texture2D(sTexture, wavecord_g);\n" +
+            "        highp vec4 tc_b = texture2D(sTexture, wavecord_b);\n" +
+            "        r = tc_r.r;\n" +
+            "        g = tc_g.g;\n" +
+            "        b = tc_b.b;\n" +
+            "    }\n" +
+            "\n" +
+            "    else if(finalType==4){\n" +
+            "        g_shift = (offset2/50.0);\n" +
+            "        for(int i=0;i<120;i+=6){\n" +
+            "            if(coordUsed.y>wave[i+2]+offset && coordUsed.y<wave[i+3]+offset){\n" +
+            "                if(wave[i+5]<0.3){\n" +
+            "                    r_shift=wave[i+4];\n" +
+            "                    g_shift=wave[i+4];\n" +
+            "                    b_shift=wave[i+4];\n" +
+            "                    break;\n" +
+            "                }\n" +
+            "            }\n" +
+            "        }\n" +
+            "        highp vec2 wavecord_r = coordUsed+vec2(r_shift,0.00);\n" +
+            "        highp vec2 wavecord_g = coordUsed+vec2(g_shift,0.00);\n" +
+            "        highp vec2 wavecord_b = coordUsed+vec2(b_shift,0.00);\n" +
+            "        highp vec4 tc_r = texture2D(sTexture, wavecord_r);\n" +
+            "        highp vec4 tc_g = texture2D(sTexture, wavecord_g);\n" +
+            "        highp vec4 tc_b = texture2D(sTexture, wavecord_b);\n" +
+            "        r = tc_r.r;\n" +
+            "        g = tc_g.g;\n" +
+            "        b = tc_b.b;\n" +
+            "    }\n" +
+            "\n" +
+            "    else if(finalType==5){\n" +
+            "        highp vec2 wavecord_r = coordUsed+vec2(r_shift,0.00);\n" +
+            "        highp vec2 wavecord_g = coordUsed+vec2(g_shift,0.00);\n" +
+            "        highp vec2 wavecord_b = coordUsed+vec2(b_shift,0.00);\n" +
+            "        highp vec4 tc_r = texture2D(sTexture, wavecord_r);\n" +
+            "        highp vec4 tc_g = texture2D(sTexture, wavecord_g);\n" +
+            "        highp vec4 tc_b = texture2D(sTexture, wavecord_b);\n" +
+            "        r = tc_r.r;\n" +
+            "        g = tc_g.g;\n" +
+            "        b = tc_b.b;\n" +
+            "        float a = mod(offset,0.02);\n" +
+            "        if(mod(coordUsed.y+offset,0.02)<0.01){\n" +
+            "            r-=0.1;\n" +
+            "            g-=0.1;\n" +
+            "            b-=0.1;\n" +
+            "        }\n" +
+            "    }\n" +
+            "\n" +
+            "    else if(finalType==7){\n" +
+            "\n" +
+            "        float sx2 = offset;\n" +
+            "        float sy2 = offset;\n" +
+            "\n" +
+            "        vec2 coordUsedZoom = vec2(0.0,0.0);\n" +
+            "        coordUsedZoom.x = coordUsed.x+((coordUsed.x-0.5)/sx2 * (1.0-sx2));\n" +
+            "        coordUsedZoom.y = coordUsed.y+((coordUsed.y-0.5)/sy2 * (1.0-sy2));\n" +
+            "\n" +
+            "        highp vec4 tca = texture2D(sTexture, coordUsedZoom);\n" +
+            "\n" +
+            "        r = tca.r + (r*(1.0-offset2));\n" +
+            "        g = tca.g + (g*(1.0-offset2));\n" +
+            "        b = tca.b + (b*(1.0-offset2));\n" +
+            "\n" +
+            "    }\n" +
+            "\n" +
+            "    else if(finalType==8){\n" +
+            "\n" +
+            "        float sx = offset;\n" +
+            "        float sy = offset;\n" +
+            "        float sx2 = offset2;\n" +
+            "        float sy2 = offset2;\n" +
+            "\n" +
+            "        vec2 coordUsedR = vec2(0.0,0.0);\n" +
+            "        vec2 coordUsedA = vec2(0.0,0.0);\n" +
+            "\n" +
+            "        coordUsedA.x = coordUsed.x+((coordUsed.x-0.5)/sx * (1.0-sx));\n" +
+            "        coordUsedA.y = coordUsed.y+((coordUsed.y-0.5)/sy * (1.0-sy));\n" +
+            "        coordUsedR.x = coordUsed.x+((coordUsed.x-0.5)/sx2 * (1.0-sx2));\n" +
+            "        coordUsedR.y = coordUsed.y+((coordUsed.y-0.5)/sy2 * (1.0-sy2));\n" +
+            "\n" +
+            "        highp vec2 wavecord_r = coordUsedR+vec2(r_shift,0.00);\n" +
+            "        highp vec2 wavecord_g = coordUsedA+vec2(g_shift,0.00);\n" +
+            "        highp vec2 wavecord_b = coordUsedA+vec2(b_shift,0.00);\n" +
+            "        highp vec4 tc_r = texture2D(sTexture, wavecord_r);\n" +
+            "        highp vec4 tc_g = texture2D(sTexture, wavecord_g);\n" +
+            "        highp vec4 tc_b = texture2D(sTexture, wavecord_b);\n" +
+            "\n" +
+            "        r = tc_r.r;\n" +
+            "        g = tc_g.g;\n" +
+            "        b = tc_b.b;\n" +
+            "    }\n" +
+            "\n" +
+            "    //curve_1\n" +
+            "    else if(finalType==10){\n" +
+            "        for(int i=0;i<120;i+=6){\n" +
+            "            if(coordUsed.y>wave[i+2]+offset && coordUsed.y<wave[i+3]+offset){\n" +
+            "                highp float startY = wave[i+2]+offset;\n" +
+            "                highp float endY = wave[i+3]+offset;\n" +
+            "                highp float shiftRadius = wave[i+3];\n" +
+            "                highp float shiftFactor = wave[i+4];\n" +
+            "                highp float x = coordUsed.x;\n" +
+            "                highp float y = coordUsed.y;\n" +
+            "                highp float max = endY-startY;\n" +
+            "                highp float perc = ((y-startY)/max);\n" +
+            "                highp float ang = perc*3.14*2.0;\n" +
+            "                highp float sinVal = sin(ang);\n" +
+            "                highp float shiftX = sinVal*shiftFactor*2.0;\n" +
+            "\n" +
+            "                highp vec2 shiftXcoord1 = vec2(shiftX,0.00);\n" +
+            "                highp vec2 shiftXcoord2 = vec2(shiftX*0.75,0.00);\n" +
+            "                highp vec2 shiftXcoord3 = vec2(shiftX*0.5,0.00);\n" +
+            "\n" +
+            "                highp vec2 shiftPos1 = coordUsed - shiftXcoord1;\n" +
+            "                highp vec2 shiftPos2 = coordUsed - shiftXcoord2;\n" +
+            "                highp vec2 shiftPos3 = coordUsed - shiftXcoord3;\n" +
+            "\n" +
+            "                highp vec4 tc1 = texture2D(sTexture, shiftPos1);\n" +
+            "                highp vec4 tc2 = texture2D(sTexture, shiftPos2);\n" +
+            "                highp vec4 tc3 = texture2D(sTexture, shiftPos3);\n" +
+            "                r = tc2.r;\n" +
+            "                g = tc1.g;\n" +
+            "                b = tc1.b;\n" +
+            "            }\n" +
+            "        }\n" +
+            "    }\n" +
+            "\n" +
+            "    //curve_2\n" +
+            "    else if(finalType==11){\n" +
+            "        for(int i=0;i<120;i+=6){\n" +
+            "            if(coordUsed.y>wave[i+2] && coordUsed.y<wave[i+3]){\n" +
+            "                highp float startY = wave[i+2]+offset;\n" +
+            "                highp float endY = wave[i+3]+offset;\n" +
+            "                highp float shiftRadius = wave[i+3];\n" +
+            "                highp float shiftFactor = wave[i+4];\n" +
+            "                highp float x = coordUsed.x;\n" +
+            "                highp float y = coordUsed.y;\n" +
+            "                highp float max = endY-startY;\n" +
+            "                highp float perc = ((y-startY)/max);\n" +
+            "                highp float ang = perc*3.14*2.0;\n" +
+            "                highp float sinVal = sin(ang);\n" +
+            "                highp float shiftX = sinVal*shiftFactor*2.0;\n" +
+            "\n" +
+            "                highp vec2 shiftXcoord1 = vec2(shiftX,0.00);\n" +
+            "                highp vec2 shiftXcoord2 = vec2(shiftX*0.75,0.00);\n" +
+            "                highp vec2 shiftXcoord3 = vec2(shiftX*0.5,0.00);\n" +
+            "\n" +
+            "                highp vec2 shiftPos1 = coordUsed - shiftXcoord1;\n" +
+            "                highp vec2 shiftPos2 = coordUsed - shiftXcoord2;\n" +
+            "                highp vec2 shiftPos3 = coordUsed - shiftXcoord3;\n" +
+            "\n" +
+            "                highp vec4 tc1 = texture2D(sTexture, shiftPos1);\n" +
+            "                highp vec4 tc2 = texture2D(sTexture, shiftPos2);\n" +
+            "                highp vec4 tc3 = texture2D(sTexture, shiftPos3);\n" +
+            "                r = tc2.r;\n" +
+            "                g = tc1.g;\n" +
+            "                b = tc1.b;\n" +
+            "            }\n" +
+            "        }\n" +
+            "    }\n" +
+            "\n" +
+            "    //white_1\n" +
+            "    else if(finalType==12){\n" +
+            "        highp float x = coordUsed.x;\n" +
+            "        highp float y_1 = coordUsed.y-offset;\n" +
+            "        if(y_1<0.0){\n" +
+            "            y_1 = 1.0+y_1;\n" +
+            "        }\n" +
+            "\n" +
+            "        highp float randval = 0.1;\n" +
+            "\n" +
+            "        highp float factor2 = offset2+(randval/5.0)+y_1/5.0;\n" +
+            "        if(mod((1.0-y_1),factor2)<factor2/2.0 && (mod(y_1,0.005)<0.002)){\n" +
+            "            r+=0.7;\n" +
+            "            g+=0.7;\n" +
+            "            b+=0.7;\n" +
+            "        }\n" +
+            "\n" +
+            "    }\n" +
+            "\n" +
+            "    //white_2\n" +
+            "    else if(finalType==13){\n" +
+            "        highp float x = coordUsed.x;\n" +
+            "        highp float y_1 = coordUsed.y-offset;\n" +
+            "        if(y_1<0.0){\n" +
+            "            y_1 = 1.0+y_1;\n" +
+            "        }\n" +
+            "\n" +
+            "        highp float randval = rand(coordUsed.xy,random1);\n" +
+            "        highp float factor2 = offset2+(randval/5.0)+y_1/5.0;\n" +
+            "        if(mod((1.0-y_1),factor2)<factor2/2.0 && (mod(y_1,0.005)<0.002)){\n" +
+            "            r+=0.7;\n" +
+            "            g+=0.7;\n" +
+            "            b+=0.7;\n" +
+            "        }\n" +
+            "\n" +
+            "    }\n" +
+            "\n" +
+            "    //shake_1\n" +
+            "    else if(finalType==14){\n" +
+            "        highp float L = distance(coordUsed,vec2(0.5,0.5));\n" +
+            "        highp float beta = atan((coordUsed.y-0.5),(coordUsed.x-0.5));\n" +
+            "        highp float teta = beta + random1;\n" +
+            "        highp float y_d = 0.5+L*sin(teta);\n" +
+            "        highp float x_d = 0.5+L*cos(teta);\n" +
+            "        highp vec2 shiftPos3 = vec2(x_d,y_d);\n" +
+            "        highp vec4 tc3 = texture2D(sTexture, shiftPos3);\n" +
+            "        r = tc3.r;\n" +
+            "        g = tc3.g;\n" +
+            "        b = tc3.b;\n" +
+            "    }\n" +
+            "\n" +
+            "    //shake_2\n" +
+            "    else if(finalType==15){\n" +
+            "        highp float L = distance(coordUsed,vec2(0.5,0.5));\n" +
+            "        highp float beta = atan((coordUsed.y-0.5),(coordUsed.x-0.5));\n" +
+            "\n" +
+            "        highp float teta = beta + random1;\n" +
+            "        highp float y_d = 0.5+L*sin(teta);\n" +
+            "        highp float x_d = 0.5+L*cos(teta);\n" +
+            "        highp vec2 shiftPos3 = vec2(x_d,y_d);\n" +
+            "        highp vec4 tc3 = texture2D(sTexture, shiftPos3);\n" +
+            "\n" +
+            "        highp float teta2 = beta + random1/2.0;\n" +
+            "        highp float y_d2 = 0.5+L*sin(teta2);\n" +
+            "        highp float x_d2 = 0.5+L*cos(teta2);\n" +
+            "        highp vec2 shiftPos2 = vec2(x_d2,y_d2);\n" +
+            "        highp vec4 tc2 = texture2D(sTexture, shiftPos2);\n" +
+            "\n" +
+            "        r = tc3.r;\n" +
+            "        g = tc2.g;\n" +
+            "        b = tc2.b;\n" +
+            "    }\n" +
+            "\n" +
+            "    //old_cinema_1\n" +
+            "    else if(finalType==16){\n" +
+            "        highp float y_1 = coordUsed.y-offset;\n" +
+            "        if(y_1<0.0){\n" +
+            "            y_1 = 1.0+y_1;\n" +
+            "        }\n" +
+            "        highp vec4 tc2 = texture2D(sTexture, vec2(coordUsed.x,y_1));\n" +
+            "        r = tc2.r;\n" +
+            "        g = tc2.g;\n" +
+            "        b = tc2.b;\n" +
+            "\n" +
+            "        y_1 = coordUsed.y+offset;\n" +
+            "        if(y_1<0.0){\n" +
+            "            y_1 = 1.0+y_1;\n" +
+            "        }\n" +
+            "\n" +
+            "        highp float randval = rand(coordUsed.xy,random1);\n" +
+            "        highp float factor2 = offset2+(randval/5.0)+y_1/5.0;\n" +
+            "        if(mod((1.0-y_1),factor2)<factor2/2.0 && (mod(y_1,0.005)<0.002)){\n" +
+            "            r+=0.7;\n" +
+            "            g+=0.7;\n" +
+            "            b+=0.7;\n" +
+            "        }\n" +
+            "    }\n" +
+            "\n" +
+            "    //old_cinema_2\n" +
+            "    else if(finalType==17){\n" +
+            "        highp float y_1 = coordUsed.y-offset;\n" +
+            "        if(y_1<0.0){\n" +
+            "            y_1 = 1.0+y_1;\n" +
+            "        }\n" +
+            "        highp vec4 tc1 = texture2D(sTexture, vec2(coordUsed.x,y_1));\n" +
+            "        highp vec4 tc2 = texture2D(sTexture, vec2(coordUsed.x+random1,y_1));\n" +
+            "        r = tc1.r;\n" +
+            "        g = tc2.g;\n" +
+            "        b = tc1.b;\n" +
+            "\n" +
+            "        y_1 = coordUsed.y+offset;\n" +
+            "        if(y_1<0.0){\n" +
+            "            y_1 = 1.0+y_1;\n" +
+            "        }\n" +
+            "\n" +
+            "        highp float randval = rand(coordUsed.xy,random1);\n" +
+            "        highp float factor2 = offset2+(randval/5.0)+y_1/5.0;\n" +
+            "        if(mod((1.0-y_1),factor2)<factor2/2.0 && (mod(y_1,0.005)<0.002)){\n" +
+            "            r+=0.7;\n" +
+            "            g+=0.7;\n" +
+            "            b+=0.7;\n" +
+            "        }\n" +
+            "    }\n" +
+            "\n" +
+            "    //leak_1\n" +
+            "    else if(finalType==18){\n" +
+            "        highp float L = distance(coordUsed,vec2(0.0,offset));\n" +
+            "        r+=0.5*L;\n" +
+            "        g+=0.25*L;\n" +
+            "\n" +
+            "        L*=L;\n" +
+            "        r+=0.5*L;\n" +
+            "    }\n" +
+            "\n" +
+            "    //leak_2\n" +
+            "    else if(finalType==19){\n" +
+            "        highp float L = distance(coordUsed,vec2(0.0,offset));\n" +
+            "        L=1.0-L;\n" +
+            "        r+=0.5*L;\n" +
+            "        g+=0.25*L;\n" +
+            "\n" +
+            "        L*=L;\n" +
+            "        r+=0.5*L;\n" +
+            "    }\n" +
+            "\n" +
+            "\n" +
+            "\n" +
+            "    if(filterType==1){\n" +
+            "        //curve merah, gelap kurang merah, terang lebih merah\n" +
+            "        r = 0.5 * sin ( r*3.14 - 1.57 ) + 0.5;\n" +
+            "    }\n" +
+            "\n" +
+            "    if(filterType==2){\n" +
+            "        r = 0.25 * tan ( r*3.14 -1.57 )/1.4 + 0.5;\n" +
+            "    }\n" +
+            "\n" +
+            "    if(filterType==3){\n" +
+            "        g = 0.5 * sin ( g*3.14 - 1.57 ) + 0.5;\n" +
+            "    }\n" +
+            "\n" +
+            "    if(filterType==4){\n" +
+            "        g = 0.25 * tan ( g*3.14 -1.57 )/1.4 + 0.5;\n" +
+            "    }\n" +
+            "\n" +
+            "    if(filterType==5){\n" +
+            "        b = 0.5 * sin ( b*3.14 - 1.57 ) + 0.5;\n" +
+            "    }\n" +
+            "\n" +
+            "    if(filterType==6){\n" +
+            "        b = 0.25 * tan ( b*3.14 -1.57 )/1.4 + 0.5;\n" +
+            "    }\n" +
+            "\n" +
+            "    if(filterType==7){\n" +
+            "        r = 0.5 * sin ( r*3.14 - 1.57 ) + 0.5;\n" +
+            "        b = 0.25 * tan ( b*3.14 -1.57 )/1.4 + 0.5;\n" +
+            "    }\n" +
+            "\n" +
+            "    if(filterType==8){\n" +
+            "        r = 0.5 * sin ( r*3.14 - 1.57 ) + 0.5;\n" +
+            "        g = 0.25 * tan ( g*3.14 -1.57 )/1.4 + 0.5;\n" +
+            "    }\n" +
+            "\n" +
+            "    if(filterType==9){\n" +
+            "        g = 0.5 * sin ( g*3.14 - 1.57 ) + 0.5;\n" +
+            "        r = 0.25 * tan ( r*3.14 -1.57 )/1.4 + 0.5;\n" +
+            "    }\n" +
+            "\n" +
+            "    if(filterType==10){\n" +
+            "        g = 0.5 * sin ( g*3.14 - 1.57 ) + 0.5;\n" +
+            "        b = 0.25 * tan ( b*3.14 -1.57 )/1.4 + 0.5;\n" +
+            "    }\n" +
+            "\n" +
+            "    if(filterType==11){\n" +
+            "        b = 0.5 * sin ( b*3.14 - 1.57 ) + 0.5;\n" +
+            "        r = 0.25 * tan ( r*3.14 -1.57 )/1.4 + 0.5;\n" +
+            "    }\n" +
+            "\n" +
+            "    if(filterType==12){\n" +
+            "        b = 0.5 * sin ( b*3.14 - 1.57 ) + 0.5;\n" +
+            "        g = 0.25 * tan ( g*3.14 -1.57 )/1.4 + 0.5;\n" +
+            "    }\n" +
+            "\n" +
+            "\n" +
+            "\n" +
+            "\n" +
+            "\n" +
+            "\n" +
+            "\n" +
+            "//    r+=(scalex+scaley)*0.0;\n" +
+            "    gl_FragColor = vec4(r,g,b,1.0);\n" +
+            "}";
 
     /* renamed from: k */
     public int f21321k = 0;
@@ -517,6 +523,31 @@ public class GlDynamicFilter extends GlFilter {
     public GlDynamicFilter(int filterType) {
         super(DEFAULT_VERTEX_SHADER, TRANSITION_FRAGMENT_SHADER);
         f21321k = filterType;
+        runOnDraw = new LinkedList<>();
+    }
+
+
+    public void changeFilterType(int filterType) {
+        if (filterType == f21321k) return;
+        resetValue();
+        f21321k = filterType;
+    }
+
+    private void resetValue() {
+        f21321k = 0;
+        f21322l = 0.0f;
+        f21323m = 0.0f;
+        f21324n = 0.0f;
+        f21325o = 1f;
+        f21326p = 1f;
+        f21327q = 1;
+        f21328r = new float[120];
+    }
+
+    protected void runOnDraw(final Runnable runnable) {
+        synchronized (runOnDraw) {
+            runOnDraw.add(runnable);
+        }
     }
 
     @Override

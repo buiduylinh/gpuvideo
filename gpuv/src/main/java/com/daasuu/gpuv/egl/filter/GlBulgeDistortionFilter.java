@@ -72,17 +72,6 @@ public class GlBulgeDistortionFilter extends GlFilter {
 
     //////////////////////////////////////////////////////////////////////////
 
-
-    @Override
-    public String getFragmentShaderSource() {
-        return FRAGMENT_SHADER;
-    }
-
-    @Override
-    public String getVertexShaderSource() {
-        return DEFAULT_VERTEX_SHADER;
-    }
-
     @Override
     public void onDraw() {
         GLES20.glUniform2f(getHandle("center"), centerX, centerY);

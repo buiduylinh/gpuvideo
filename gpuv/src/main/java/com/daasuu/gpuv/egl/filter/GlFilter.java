@@ -2,7 +2,6 @@ package com.daasuu.gpuv.egl.filter;
 
 import android.content.res.Resources;
 import android.opengl.GLES20;
-
 import com.daasuu.gpuv.egl.EglUtil;
 import com.daasuu.gpuv.egl.GlFramebufferObject;
 
@@ -46,7 +45,7 @@ public class GlFilter {
     protected static final int VERTICES_DATA_POS_OFFSET = 0 * FLOAT_SIZE_BYTES;
     protected static final int VERTICES_DATA_UV_OFFSET = VERTICES_DATA_POS_OFFSET + VERTICES_DATA_POS_SIZE * FLOAT_SIZE_BYTES;
 
-    private String vertexShaderSource;
+    private final String vertexShaderSource;
     private String fragmentShaderSource;
 
     private int program;
@@ -56,11 +55,7 @@ public class GlFilter {
 
     private int vertexBufferName;
 
-    HashMap<String, Integer> handleMap = new HashMap<String, Integer>();
-
-    public HashMap<String, Integer> getHandleMap() {
-        return handleMap;
-    }
+    private final HashMap<String, Integer> handleMap = new HashMap<String, Integer>();
 
     public GlFilter() {
         this(DEFAULT_VERTEX_SHADER, DEFAULT_FRAGMENT_SHADER);
@@ -91,18 +86,6 @@ public class GlFilter {
         this.fragmentShaderSource = fragmentShaderSource;
     }
 
-
-    public String getVertexShaderSource() {
-        return vertexShaderSource;
-    }
-
-    public void setVertexShaderSource(String vertexShaderSource) {
-        this.vertexShaderSource = vertexShaderSource;
-    }
-
-    public String getFragmentShaderSource() {
-        return fragmentShaderSource;
-    }
 
     public void setFrameSize(final int width, final int height) {
         // do nothing
@@ -156,7 +139,7 @@ public class GlFilter {
         return vertexBufferName;
     }
 
-    protected int getHandle(final String name) {
+    protected final int getHandle(final String name) {
         final Integer value = handleMap.get(name);
         if (value != null) {
             return value;
@@ -173,7 +156,5 @@ public class GlFilter {
         return location;
     }
 
-    public int getProgram() {
-        return program;
-    }
+
 }

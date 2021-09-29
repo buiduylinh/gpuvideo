@@ -131,9 +131,9 @@ public class BeautyFilter extends GlFilter {
     @Override
     public void setup() {
         super.setup();
-        paramsLocation = GLES20.glGetUniformLocation(getProgram(), "params");
+/*        paramsLocation = GLES20.glGetUniformLocation(getProgram(), "params");
         brightnessLocation = GLES20.glGetUniformLocation(getProgram(), "brightness");
-        singleStepOffsetLocation = GLES20.glGetUniformLocation(getProgram(), "singleStepOffset");
+        singleStepOffsetLocation = GLES20.glGetUniformLocation(getProgram(), "singleStepOffset");*/
     }
 
     @Override

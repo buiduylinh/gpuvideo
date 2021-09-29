@@ -3,16 +3,16 @@ package com.daasuu.gpuv.egl.filter;
 public class TransitionFilterWrapper {
     public static final int PRESSING = -1;
 
-    private GlFilter glFilter;
+    private int filterType;
     private long startFrame;
     private long endFrame; //end frame =-1 -> đang press
 
-    public GlFilter getGlFilter() {
-        return glFilter;
+    public int getFilterType() {
+        return filterType;
     }
 
-    public void setGlFilter(GlFilter glFilter) {
-        this.glFilter = glFilter;
+    public void setFilterType(int filterType) {
+        this.filterType = filterType;
     }
 
     public long getStartFrame() {

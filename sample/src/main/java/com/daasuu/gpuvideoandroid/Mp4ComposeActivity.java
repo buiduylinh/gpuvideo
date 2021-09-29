@@ -22,6 +22,8 @@ import android.widget.Toast;
 
 import com.daasuu.gpuv.composer.FillMode;
 import com.daasuu.gpuv.composer.GPUMp4Composer;
+import com.daasuu.gpuv.egl.filter.GlBoxBlurFilter;
+import com.daasuu.gpuv.egl.filter.GlDynamicFilter;
 import com.daasuu.gpuv.egl.filter.GlFilter;
 import com.daasuu.gpuv.egl.filter.GlFilterGroup;
 import com.daasuu.gpuv.egl.filter.GlMonochromeFilter;
