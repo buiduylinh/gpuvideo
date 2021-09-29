@@ -21,8 +21,7 @@ import com.daasuu.gpuv.camerarecorder.CameraRecordListener;
 import com.daasuu.gpuv.camerarecorder.GPUCameraRecorder;
 import com.daasuu.gpuv.camerarecorder.GPUCameraRecorderBuilder;
 import com.daasuu.gpuv.camerarecorder.LensFacing;
-import com.daasuu.gpuv.egl.filter.TransitionFilter;
-import com.daasuu.gpuv.egl.filter.TransitionFilterV2;
+import com.daasuu.gpuv.egl.filter.GlTransitionFilter;
 import com.daasuu.gpuvideoandroid.widget.SampleCameraGLView;
 
 import javax.microedition.khronos.egl.EGL10;
@@ -105,7 +104,7 @@ public class BaseCameraActivity extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if (GPUCameraRecorder != null) {
-                    GPUCameraRecorder.setFilter(new TransitionFilterV2(position + 1));
+                    GPUCameraRecorder.setFilter(new GlTransitionFilter());
                 }
             }
         });

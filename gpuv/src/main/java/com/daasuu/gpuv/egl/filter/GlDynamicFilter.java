@@ -4,7 +4,7 @@ import android.opengl.GLES20;
 
 import java.nio.FloatBuffer;
 
-public class TransitionFilterV2 extends GlFilter {
+public class GlDynamicFilter extends GlFilter {
 
     public static final String TRANSITION_FRAGMENT_SHADER = "precision mediump float;\n" +
                     "varying vec2 vTextureCoord;\n" +
@@ -514,7 +514,7 @@ public class TransitionFilterV2 extends GlFilter {
 
     long j = 0;
 
-    public TransitionFilterV2(int filterType) {
+    public GlDynamicFilter(int filterType) {
         super(DEFAULT_VERTEX_SHADER, TRANSITION_FRAGMENT_SHADER);
         f21321k = filterType;
     }

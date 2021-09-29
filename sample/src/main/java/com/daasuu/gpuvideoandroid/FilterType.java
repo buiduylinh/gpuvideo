@@ -45,7 +45,6 @@ import com.daasuu.gpuv.egl.filter.GlWatermarkFilter;
 import com.daasuu.gpuv.egl.filter.GlWeakPixelInclusionFilter;
 import com.daasuu.gpuv.egl.filter.GlWhiteBalanceFilter;
 import com.daasuu.gpuv.egl.filter.GlZoomBlurFilter;
-import com.daasuu.gpuv.egl.filter.TransitionFilter;
 import com.daasuu.gpuvideoandroid.filter.GlBitmapOverlaySample;
 
 import java.io.IOException;
@@ -107,7 +106,7 @@ public enum FilterType {
             case DEFAULT:
                 return new GlFilter();
             case BILATERAL_BLUR:
-                return new TransitionFilter();
+                return new GlBilateralFilter();
             case BOX_BLUR:
                 return new GlBoxBlurFilter();
             case BRIGHTNESS:

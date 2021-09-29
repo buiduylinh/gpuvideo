@@ -26,6 +26,7 @@ import com.daasuu.gpuv.egl.filter.GlFilter;
 import com.daasuu.gpuv.egl.filter.GlFilterGroup;
 import com.daasuu.gpuv.egl.filter.GlMonochromeFilter;
 import com.daasuu.gpuv.egl.filter.GlVignetteFilter;
+import com.daasuu.gpuv.egl.filter.GlTransitionFilter;
 import com.daasuu.gpuvideoandroid.compose.VideoItem;
 import com.daasuu.gpuvideoandroid.compose.VideoListAdapter;
 import com.daasuu.gpuvideoandroid.compose.VideoLoadListener;
@@ -169,7 +170,7 @@ public class Mp4ComposeActivity extends AppCompatActivity {
                 // .rotation(Rotation.ROTATION_270)
                 //.size(720, 720)
                 .fillMode(FillMode.PRESERVE_ASPECT_CROP)
-                .filter(glFilter)
+                .filter(new GlTransitionFilter())
                 .mute(muteCheckBox.isChecked())
                 .flipHorizontal(flipHorizontalCheckBox.isChecked())
                 .flipVertical(flipVerticalCheckBox.isChecked())
