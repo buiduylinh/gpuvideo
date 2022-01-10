@@ -4,6 +4,8 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.media.MediaMetadataRetriever;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.opengl.GLException;
 import android.os.Environment;
@@ -16,7 +18,10 @@ import android.widget.AdapterView;
 import android.widget.FrameLayout;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
+
 import com.daasuu.gpuv.camerarecorder.CameraRecordListener;
 import com.daasuu.gpuv.camerarecorder.GPUCameraRecorder;
 import com.daasuu.gpuv.camerarecorder.GPUCameraRecorderBuilder;
@@ -27,6 +32,7 @@ import com.daasuu.gpuvideoandroid.widget.SampleCameraGLView;
 import javax.microedition.khronos.egl.EGL10;
 import javax.microedition.khronos.egl.EGLContext;
 import javax.microedition.khronos.opengles.GL10;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -35,6 +41,7 @@ import java.nio.IntBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 public class BaseCameraActivity extends AppCompatActivity {
 
@@ -58,7 +65,7 @@ public class BaseCameraActivity extends AppCompatActivity {
         recordBtn.setOnClickListener(v -> {
 
             if (recordBtn.getText().equals(getString(R.string.app_record))) {
-                filepath = getVideoFilePath();
+                filepath = getVideoFilePath(this);
                 GPUCameraRecorder.start(filepath);
                 recordBtn.setText("Stop");
                 lv.setVisibility(View.GONE);
@@ -173,6 +180,11 @@ public class BaseCameraActivity extends AppCompatActivity {
 
                     @Override
                     public void onRecordComplete() {
+                        new Handler().postDelayed(() -> {
+                            Toast.makeText(BaseCameraActivity.this, "Video Duration" + getDuration2(new File(filepath)), Toast.LENGTH_LONG).show();
+                        }, 1000);
+
+
                         exportMp4ToGallery(getApplicationContext(), filepath);
                     }
 
@@ -215,6 +227,26 @@ public class BaseCameraActivity extends AppCompatActivity {
 //        GPUCameraRecorder.setFilter(Filters.getFilterInstance(filters, getApplicationContext()));
 //    }
 
+    private static Long getDuration(File file) {
+        MediaPlayer mMediaPlayer = new MediaPlayer();
+        try {
+            mMediaPlayer.setDataSource(file.getPath());
+            mMediaPlayer.prepare();
+            int duration = mMediaPlayer.getDuration();
+            mMediaPlayer.release();
+            return (long) duration;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return 0L;
+    }
+
+    private static Long getDuration2(File file) {
+        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+        mmr.setDataSource(Uri.fromFile(file).getPath());
+        long duration = Long.parseLong(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+        return duration;
+    }
 
     private interface BitmapReadyCallbacks {
         void onBitmapReady(Bitmap bitmap);
@@ -286,8 +318,8 @@ public class BaseCameraActivity extends AppCompatActivity {
                 Uri.parse("file://" + filePath)));
     }
 
-    public static String getVideoFilePath() {
-        return getAndroidMoviesFolder().getAbsolutePath() + "/" + new SimpleDateFormat("yyyyMM_dd-HHmmss").format(new Date()) + "GPUCameraRecorder.mp4";
+    public static String getVideoFilePath(Context context) {
+        return createNewFile(context, ".mp4").getPath();
     }
 
     public static File getAndroidMoviesFolder() {
@@ -310,4 +342,11 @@ public class BaseCameraActivity extends AppCompatActivity {
         return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
     }
 
+    private static File createNewFile(Context context, String suffix) {
+        return createNewFile(context.getCacheDir(), suffix);
+    }
+
+    private static File createNewFile(File directory, String suffix) {
+        return new File(directory, UUID.randomUUID().toString() + suffix);
+    }
 }
